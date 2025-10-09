@@ -8,3 +8,10 @@ By using this project you agree that:
 - You accept full responsibility for any damage, disruption, or legal consequences resulting from misuse.
 
 If you are unsure about whether a target is authorized, do **not** run the tool. For safe testing, use isolated environments (localhost, local VMs/containers, or private lab networks) and conservative limits.
+
+You can use this tool in Termux, Linux, windows
+
+for all of it do :
+git clone https://github.com/Sandro2222/DDoS-Ripper-V2.git
+cd DDoS-Ripper
+Usage: python3 ddos_ripper.py -t <target> -p <port> -T <threads> -d <duration> -a <attack_type>

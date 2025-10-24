@@ -11,7 +11,10 @@ If you are unsure about whether a target is authorized, do **not** run the tool.
 
 You can use this tool in Termux, Linux, windows
 
-for all of it do :
-git clone https://github.com/Sandro2222/DDoS-Ripper-V2.git
-cd DDoS-Ripper
-Usage: python3 ddos_ripper.py -t <target> -p <port> -T <threads> -d <duration> -a <attack_type>
+# for all of it do :
+ git clone https://github.com/Sandro2222/DDoS-Ripper-V2.git
+
+
+
+ cd DDoS-Ripper
+

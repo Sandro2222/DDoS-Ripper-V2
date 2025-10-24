@@ -165,19 +165,12 @@ class EngineRipper:
         """Optimized banner for maximum intimidation"""
         banner = f"""
 {Color.RED}{Color.BOLD}
-▓█████▄  ▓█████ ▄▄▄       █    ██  ██▓███   ██▀███   ▒█████   █     █░▓█████  ██▀███  
-▒██▀ ██▌▓█   ▀▒████▄     ██  ▓██▒▓██░  ██▒▓██ ▒ ██▒▒██▒  ██▒▓█░ █ ░█░▓█   ▀ ▓██ ▒ ██▒
-░██   █▌▒███  ▒██  ▀█▄  ▓██  ▒██░▓██░ ██▓▒▓██ ░▄█ ▒▒██░  ██▒▒█░ █ ░█ ▒███   ▓██ ░▄█ ▒
-░▓█▄   ▌▒▓█  ▄░██▄▄▄▄██ ▓▓█  ░██░▒██▄█▓▒ ▒▒██▀▀█▄  ▒██   ██░░█░ █ ░█ ▒▓█  ▄ ▒██▀▀█▄  
-░▒████▓ ░▒████▒▓█   ▓██▒▒▒█████▓ ▒██▒ ░  ░░██▓ ▒██▒░ ████▓▒░░░██▒██▓ ░▒████▒░██▓ ▒██▒
- ▒▒▓  ▒ ░░ ▒░ ░▒▒   ▓▒█░░▒▓▒ ▒ ▒ ▒▓▒░ ░  ░░ ▒▓ ░▒▓░░ ▒░▒░▒░ ░ ▓░▒ ▒  ░░ ▒░ ░░ ▒▓ ░▒▓░
- ░ ▒  ▒  ░ ░  ░ ▒   ▒▒ ░░░▒░ ░ ░ ░▒ ░       ░▒ ░ ▒░  ░ ▒ ▒░   ▒ ░ ░   ░ ░  ░  ░▒ ░ ▒░
- ░ ░  ░    ░    ░   ▒    ░░░ ░ ░ ░░         ░░   ░ ░ ░ ░ ▒    ░   ░     ░     ░░   ░ 
-   ░       ░  ░     ░  ░   ░                 ░         ░ ░      ░       ░  ░   ░     
- ░                                                                                  
+░█▀▀▄ ░█▀▀▄ ░█▀▀▀█ ░█▀▀▀█ ── ░█▀▀█ ▀█▀ ░█▀▀█ ░█▀▀█ ░█▀▀▀ ░█▀▀█ 
+░█─░█ ░█─░█ ░█──░█ ─▀▀▀▄▄ ▀▀ ░█▄▄▀ ░█─ ░█▄▄█ ░█▄▄█ ░█▀▀▀ ░█▄▄▀ 
+░█▄▄▀ ░█▄▄▀ ░█▄▄▄█ ░█▄▄▄█ ── ░█─░█ ▄█▄ ░█─── ░█─── ░█▄▄▄ ░█─░█
 {Color.CYAN}
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                 E N G I N E R I P P E R    v 4 . 1 - U L T I M A T E         ║
+║                 G R E A T N E S S H U B    V 2 - U L T I M A T E             ║
 ║         Enhanced Error Handling & Server Detection                           ║
 ║           Windows • Linux • Termux (Android) • macOS                         ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
@@ -529,11 +522,11 @@ def main():
     
     if not options.host:
         print(f"{Color.RED}[ERROR]{Color.END} Target host is required.")
-        print(f"{Color.YELLOW}[USAGE]{Color.END} python engineripper.py -s target.com -p 80 -t 200 -m mixed")
+        print(f"{Color.YELLOW}[USAGE]{Color.END} python DRipper.py -s target.com -p 80 -t 200 -m mixed")
         print(f"{Color.YELLOW}[EXAMPLES]{Color.END}")
-        print("  python engineripper.py -s 192.168.1.100 -p 80 -t 300 -m tcp_flood")
-        print("  python engineripper.py -s example.com -p 443 -t 150 -m http_flood -d 60")
-        print("  python engineripper.py -s target.com -p 8080 -t 400 -m mixed")
+        print("  python DRipper.py -s 192.168.1.100 -p 80 -t 300 -m tcp_flood")
+        print("  python DRipper.py -s example.com -p 443 -t 150 -m http_flood -d 60")
+        print("  python DRipper.py -s target.com -p 8080 -t 400 -m mixed")
         sys.exit(1)
     
     # Validate attack method
